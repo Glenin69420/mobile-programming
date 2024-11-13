@@ -194,29 +194,4 @@ class PokemonService {
         .toList();
   }
 
-  Future<List<Map<String, dynamic>>> fetchEvolutionChain(int evolutionChainId) async {
-    final String url = 'https://pokeapi.co/api/v2/evolution-chain/$evolutionChainId/';
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode != 200) {
-      throw Exception("Error fetching evolution chain");
-    }
-
-    final data = jsonDecode(response.body);
-    final List<Map<String, dynamic>> evolutionList = [];
-
-    // Procesamos el árbol de evolución
-    void parseChain(Map<String, dynamic> chainLink) {
-      evolutionList.add({
-        'name': chainLink['species']['name'],
-        'url': chainLink['species']['url'],
-      });
-      if (chainLink['evolves_to'] != null && chainLink['evolves_to'].isNotEmpty) {
-        parseChain(chainLink['evolves_to'][0]);
-      }
-    }
-
-    parseChain(data['chain']);
-    return evolutionList;
-  }
 }
