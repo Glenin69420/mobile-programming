@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:proyecto_final_pokedex/screens/pokemon_detail_screen.dart';
 import 'services/pokemon_service.dart';
+import 'package:proyecto_final_pokedex/widgets/filter_dropdown.dart';
+import 'package:proyecto_final_pokedex/widgets/stat_card.dart';
 
 void main() {
   runApp(MyApp());
@@ -174,15 +176,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              DropdownButton<String>(
-                hint: Text("Generación"),
-                value: _selectedGeneration,
-                items: _generationOptions.map((gen) {
-                  return DropdownMenuItem<String>(
-                    value: gen,
-                    child: Text(gen),
-                  );
-                }).toList(),
+              FilterDropdown(
+                title: "Generación",
+                selectedValue: _selectedGeneration,
+                options: _generationOptions,
                 onChanged: (value) {
                   setState(() {
                     _selectedGeneration = value;
@@ -193,15 +190,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               SizedBox(width: 20),
-              DropdownButton<String>(
-                hint: Text("Tipo"),
-                value: _selectedType,
-                items: _typeOptions.map((type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(type),
-                  );
-                }).toList(),
+              FilterDropdown(
+                title: "Tipo",
+                selectedValue: _selectedType,
+                options: _typeOptions,
                 onChanged: (value) {
                   setState(() {
                     _selectedType = value;
@@ -242,11 +234,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return ListTile(
                   leading: spriteUrl != null
-                      ? Image.network(
-                    spriteUrl,
-                    width: 50,
-                    height: 50,
-                    errorBuilder: (context, error, stackTrace) => Icon(Icons.error),
+                      ? Hero(
+                    tag: "pokemon_${pokemon['id']}",
+                    child: Image.network(
+                      spriteUrl,
+                      width: 50,
+                      height: 50,
+                      errorBuilder: (context, error, stackTrace) => Icon(Icons.error),
+                    ),
                   )
                       : Icon(Icons.error),
                   title: Text(name),
@@ -254,15 +249,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => PokemonDetailScreen(
-                          pokemonId: pokemon['id'] ?? 0,
-                          pokemonName: name,
-                        ),
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            PokemonDetailScreen(
+                              pokemonId: pokemon['id'] ?? 0,
+                              pokemonName: name,
+                            ),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(1.0, 0.0);
+                          const end = Offset.zero;
+                          const curve = Curves.ease;
+
+                          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                          var offsetAnimation = animation.drive(tween);
+
+                          return SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          );
+                        },
                       ),
                     );
                   },
+
                 );
+
               },
             ),
           ),

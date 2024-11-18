@@ -1,8 +1,11 @@
 import 'dart:convert';
 
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class PokemonService {
+  final String baseUrl = 'https://pokeapi.co/api/v2';
   final String apiUrl = 'https://beta.pokeapi.co/graphql/v1beta';
   late GraphQLClient client;
 
@@ -14,56 +17,42 @@ class PokemonService {
     );
   }
 
+
   Future<Map<String, dynamic>> fetchPokemonDetails(int pokemonId) async {
-    const String query = r'''
-    query GetPokemonDetails($id: Int!) {
-      pokemon_v2_pokemon_by_pk(id: $id) {
-        id
-        name
-        height
-        weight
-        base_experience
-        pokemon_v2_pokemontypes {
-          pokemon_v2_type {
-            name
-          }
-        }
-        pokemon_v2_pokemonstats {
-          base_stat
-          pokemon_v2_stat {
-            name
-          }
-        }
-        pokemon_v2_pokemonabilities {
-          pokemon_v2_ability {
-            name
-          }
-        }
-        pokemon_v2_pokemonmoves {
-          pokemon_v2_move {
-            name
-          }
-        }
-        pokemon_v2_pokemonsprites {
-          sprites
-        }
+    try {
+      // Solicitud a /pokemon para estadísticas, tipos, y movimientos
+      final pokemonResponse = await http.get(Uri.parse('$baseUrl/pokemon/$pokemonId'));
+      if (pokemonResponse.statusCode != 200) {
+        throw Exception("Error al obtener detalles del Pokémon");
       }
+      final pokemonData = json.decode(pokemonResponse.body);
+
+      // Solicitud a /pokemon-species para descripción
+      final speciesResponse = await http.get(Uri.parse('$baseUrl/pokemon-species/$pokemonId'));
+      if (speciesResponse.statusCode != 200) {
+        throw Exception("Error al obtener detalles de la especie");
+      }
+      final speciesData = json.decode(speciesResponse.body);
+
+      // Combinamos los datos
+      return {
+        'name': pokemonData['name'],
+        'sprites': pokemonData['sprites'],
+        'stats': pokemonData['stats'],
+        'types': pokemonData['types'],
+        'abilities': pokemonData['abilities'],
+        'moves': pokemonData['moves'],
+        'flavor_text': speciesData['flavor_text_entries']
+            .where((entry) => entry['language']['name'] == 'en')
+            .map((entry) => entry['flavor_text'])
+            .join(' '),
+      };
+    } catch (error) {
+      print("Error en fetchPokemonDetails: $error");
+      throw Exception(error);
     }
-  ''';
-
-    final QueryOptions options = QueryOptions(
-      document: gql(query),
-      variables: {'id': pokemonId},
-    );
-    final result = await client.query(options);
-
-    if (result.hasException) {
-      print("Error en fetchPokemonDetails: ${result.exception.toString()}");
-      throw Exception(result.exception.toString());
-    }
-
-    return result.data?['pokemon_v2_pokemon_by_pk'] ?? {};
   }
+
 
   Future<List<dynamic>> searchPokemonByName(String name) async {
     final String query = '''
